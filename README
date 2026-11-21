@@ -1,0 +1,336 @@
+# pyuikit
+
+Современная библиотека для стилизации и компоновки графических интерфейсов на Python поверх Tkinter.
+
+PyUIKit добавляет поверх стандартного Tkinter то, чего ему не хватает: декларативную систему тем, готовые виджеты со стилями и вариантами, менеджеры компоновки (Stack, Grid, Flow), плавные анимации и удобные утилиты для работы с цветом и шрифтами. Всё это — без внешних зависимостей, только стандартная библиотека Python.
+
+## Возможности
+
+- **Декларативные темы** — цвета, шрифты, отступы и радиусы в одном объекте `Theme`. Встроенные темы `light` и `dark`, лёгкое добавление своих.
+- **Переключение темы в runtime** — `app.set_theme("dark")` перекрашивает всё приложение на лету.
+- **Богатый набор виджетов** — `Label`, `Button`, `Entry`, `Frame`, `Checkbox`, `Combobox` с вариантами оформления (`default`, `primary`, `danger`, `ghost`, `card`, ...).
+- **Менеджеры компоновки** — `StackLayout` (вертикально/горизонтально), `GridLayout`, `FlowLayout` с переносом строк.
+- **Стили и переопределения** — объект `Style` с `merged()`, `with_changes()`, `to_tk()`.
+- **Анимации** — `animate(widget, "opacity" | "width" | "height", ...)` с настраиваемым easing.
+- **Утилиты** — `Color` (hex/rgb/named, `lighten`, `darken`, `mix`) и `Font` (family/size/weight/slant).
+- **Ноль зависимостей** — только стандартная библиотека Python 3.9+.
+
+## Установка
+
+```bash
+pip install pyuikit
+```
+
+Или из исходников:
+
+```bash
+git clone https://github.com/example/pyuikit.git
+cd pyuikit
+pip install -e .
+```
+
+## Быстрый старт
+
+```python
+from pyuikit import App, Label, Button, StackLayout
+
+app = App(title="Hello PyUIKit", theme="dark", width=520, height=360)
+
+layout = StackLayout(app, direction="vertical", gap=12, padding=24)
+layout.tk.pack(fill="both", expand=True)
+
+layout.add(Label(app, "Welcome to PyUIKit", variant="heading"))
+layout.add(Label(app, "Нажмите кнопку ниже", variant="muted"))
+layout.add(Button(app, "Click me", variant="primary",
+                  on_click=lambda: print("Clicked!")))
+
+app.run()
+```
+
+## Обзор API
+
+### App
+
+Центральный объект приложения. Создаёт окно Tkinter, хранит текущую тему и фабрики стилей.
+
+```python
+from pyuikit import App
+
+app = App(
+    title="My App",
+    theme="light",          # "light" | "dark" | имя своей темы
+    width=800,
+    height=600,
+    resizable=(True, True),
+)
+
+app.set_theme("dark")       # переключение темы на лету
+app.run()
+```
+
+Методы:
+
+| Метод | Описание |
+|-------|----------|
+| `set_theme(name_or_theme)` | Переключить тему по имени или объекту `Theme` |
+| `style(kind, variant)` | Получить `Style` для виджета (`"button"`, `"primary"`) |
+| `run()` | Запустить главный цикл |
+| `close()` | Закрыть приложение |
+| `after(ms, callback)` | Отложенный вызов |
+| `register/unregister(widget)` | Управление реестром виджетов для обновления темы |
+
+### Виджеты
+
+Все виджеты имеют атрибут `.tk` (низкоуровневый Tkinter-виджет) и методы `pack`, `grid`, `place`, `destroy`, `refresh_style`.
+
+```python
+from pyuikit import Label, Button, Entry, Frame, Checkbox, Combobox
+
+Label(app, "Заголовок", variant="heading")
+Label(app, "Подпись", variant="muted")
+
+Button(app, "Сохранить", variant="primary", on_click=save)
+Button(app, "Удалить", variant="danger", on_click=delete)
+Button(app, "Отмена", variant="ghost")
+
+entry = Entry(app, placeholder="Введите имя")
+entry.set_value("Иван")
+print(entry.value)
+entry.clear()
+
+card = Frame(app, variant="card")
+
+remember = Checkbox(app, text="Запомнить меня")
+print(remember.value)
+
+combo = Combobox(app, values=["A", "B", "C"], on_change=lambda v: print(v))
+```
+
+Варианты оформления:
+
+| Виджет | Варианты |
+|--------|----------|
+| `Label` | `default`, `heading`, `subheading`, `muted` |
+| `Button` | `default`, `primary`, `danger`, `ghost` |
+| `Frame` | `default`, `card` |
+| `Entry` | `default` |
+| `Checkbox` | `default` |
+| `Combobox` | `default` |
+
+### Менеджеры компоновки
+
+**StackLayout** — последовательное размещение по вертикали или горизонтали.
+
+```python
+from pyuikit import StackLayout
+
+layout = StackLayout(app, direction="vertical", gap=12, padding=24, align="stretch")
+layout.tk.pack(fill="both", expand=True)
+
+layout.add(Label(app, "Строка 1"))
+layout.add(Label(app, "Строка 2"), expand=True, fill="both")
+```
+
+Параметры: `direction` (`"vertical"` / `"horizontal"`), `gap`, `padding` (число или `(top, right, bottom, left)`), `align` (`"start"`, `"center"`, `"end"`, `"stretch"`).
+
+**GridLayout** — сетка с автоматическим размещением.
+
+```python
+from pyuikit import GridLayout
+
+grid = GridLayout(app, columns=3, gap=8, padding=16)
+grid.tk.pack(fill="both", expand=True)
+
+for i in range(9):
+    grid.add(Label(app, f"Ячейка {i}"), sticky="nsew")
+```
+
+**FlowLayout** — элементы переносятся на новую строку при нехватке ширины.
+
+```python
+from pyuikit import FlowLayout
+
+flow = FlowLayout(app, gap=6, padding=12, min_width=400)
+flow.tk.pack(fill="both", expand=True)
+
+for tag in ["python", "tkinter", "ui", "layout", "theme", "animation"]:
+    flow.add(Label(app, tag))
+```
+
+### Темы
+
+Тема — это набор цветов, шрифтов, отступов и радиусов.
+
+```python
+from pyuikit import Theme, ThemeRegistry
+
+ocean = Theme(
+    name="ocean",
+    colors={
+        "background": "#0b1d2a",
+        "surface": "#123447",
+        "text": "#e6f5ff",
+        "text_muted": "#8fbcd4",
+        "border": "#1f5a77",
+        "primary": "#00a8e8",
+        "primary_hover": "#22bdf7",
+        "primary_active": "#0087ba",
+        "primary_text": "#ffffff",
+        "input_bg": "#0f2b3b",
+        "input_border": "#1f5a77",
+        "input_focus": "#00a8e8",
+        "danger": "#ef476f",
+    },
+)
+
+ThemeRegistry.register(ocean)
+app = App(theme="ocean")
+```
+
+Ключи цветов, используемые встроенными стилями:
+
+`background`, `surface`, `surface_alt`, `text`, `text_muted`, `border`, `primary`, `primary_hover`, `primary_active`, `primary_text`, `success`, `warning`, `danger`, `danger_hover`, `input_bg`, `input_border`, `input_focus`, `shadow`.
+
+Также можно переопределить отдельные ключи поверх существующей темы:
+
+```python
+base = ThemeRegistry.get("dark")
+custom = base.with_overrides(colors={"primary": "#ff6b6b"})
+app.set_theme(custom)
+```
+
+### Стили
+
+`Style` описывает внешний вид виджета и умеет конвертироваться в опции Tkinter.
+
+```python
+from pyuikit import Style
+
+style = Style(
+    background="#ffffff",
+    foreground="#1a1a1a",
+    border="#d0d0d0",
+    border_width=1,
+    radius=8,
+    padding=(12, 8),
+    font="Segoe UI 11",
+    cursor="hand2",
+)
+
+style2 = style.with_changes(background="#f5f5f5")
+merged = style.merged(style2)
+options = merged.to_tk()
+```
+
+Переопределить стиль конкретного виджета можно через `style_overrides` и `style_kwargs`:
+
+```python
+from pyuikit import Button, Style
+
+btn = Button(
+    app, "Особая кнопка", variant="primary",
+    style_overrides=Style(background="#ff6b6b", radius=999),
+    style_kwargs={"foreground": "#ffffff"},
+)
+```
+
+### Анимации
+
+```python
+from pyuikit import animate
+
+# Плавно изменить прозрачность окна
+animate(app.root, "opacity", 0.5, duration=300)
+
+# Плавно изменить ширину виджета
+animate(some_button, "width", 240, duration=200)
+
+# Плавно изменить высоту с завершающим колбэком
+animate(card, "height", 120, duration=250,
+        on_complete=lambda: print("done"))
+```
+
+Кастомный easing:
+
+```python
+def ease_in_out(t):
+    return 2 * t * t if t < 0.5 else 1 - (-2 * t + 2) ** 2 / 2
+
+animate(widget, "width", 300, duration=400, easing=ease_in_out)
+```
+
+### Цвета и шрифты
+
+```python
+from pyuikit import Color, Font
+
+c = Color("#2d6cdf")
+c.r, c.g, c.b, c.a          # компоненты
+c.rgb, c.rgba               # кортежи
+c.to_hex(with_alpha=True)   # "#2d6cdfff"
+c.lighten(0.2)
+c.darken(0.2)
+c.mix(Color("white"), 0.5)
+
+c1 = Color("red")
+c2 = Color((255, 0, 0))
+c3 = Color("#f00")
+print(c1 == c2 == c3)       # True
+
+f = Font(family="Segoe UI", size=12, weight="bold", slant="italic")
+f.to_tuple()                # ("Segoe UI", 12, "bold italic")
+f.derive(size=16)
+Font.from_string("Arial 14 bold")
+```
+
+## Примеры
+
+В каталоге `examples/`:
+
+- `basic_app.py` — форма с вводом, чекбоксом и кнопками.
+- `themed_app.py` — регистрация кастомной темы и переключение между темами в runtime.
+
+Запуск:
+
+```bash
+python examples/basic_app.py
+python examples/themed_app.py
+```
+
+## Структура проекта
+
+```
+pyuikit/
+├── pyuikit/
+│   ├── core/          # App, Theme, ThemeRegistry, Style
+│   ├── widgets/       # Label, Button, Entry, Frame, Checkbox, Combobox
+│   ├── layouts/       # StackLayout, GridLayout, FlowLayout
+│   ├── animations/    # Transition, animate
+│   └── utils/         # Color, Font
+├── examples/
+├── tests/
+├── pyproject.toml
+└── README.md
+```
+
+## Совместимость
+
+- Python 3.9+
+- Windows, macOS, Linux (везде, где есть Tkinter)
+- Без внешних зависимостей
+
+## Разработка
+
+```bash
+git clone https://github.com/example/pyuikit.git
+cd pyuikit
+pip install -e .
+
+python -m unittest discover -s tests -v
+```
+
+## Ограничения
+
+- PyUIKit — надстройка над Tkinter, поэтому наследует его ограничения (нативный вид виджетов, отсутствие полноценного CSS-подобного движка).
+- Радиусы скругления из `Style.radius` хранятся и доступны через API, но стандартный Tkinter не умеет рисовать скруглённые углы «из коробки» — для их отрисовки потребуется кастомный Canvas-виджет.
+- Анимация `opacity` применяется к окну целиком (`wm_attributes("-alpha")`), а не к отдельному
